@@ -1,0 +1,27 @@
+# Calculations for Battery target level based on tomorrow's sunshine
+template:
+  - sensor:
+      - name: "Optimal Battery Target - unconstrained (%)"
+        unit_of_measurement: "%"
+        state: >
+            {# Pick up appropriate forecast for next charging cycle #}
+            {% set time = now().hour %}
+            {% if 0 <= time < 5 %}
+                {% set F = states('sensor.solcast_forecast_today') | float(0) %}
+            {% else %}
+                {% set F = states('sensor.solcast_forecast_tomorrow') | float(0) %}
+            {% endif %}
+            {# Pick up the other info needed #}
+            {% set C = states('sensor.givtcp_ce2218g320_battery_capacity_kwh') | float(0) %}
+            {% set U = states('input_number.usage_4am_to_end_of_solar') | float(0) %}
+            {% set target = 100 * (C - F + U)/C %}
+            {{'%0.1f' % target|float}}
+      - name: "Optimal Battery Target (%)"
+        unit_of_measurement: "%"
+        state: >
+            {% set target = states('sensor.optimal_battery_target_unconstrained') | float(0) %}
+            {# Constrain in suitable range #}
+            {% set max_target = states('input_number.battery_target_max') | float(0) %}
+            {% set min_target = states('input_number.battery_target_min') | float(0) %}
+            {% set target = max(min(target, max_target), min_target) %}
+            {{'%0.1f' % target|float}}
